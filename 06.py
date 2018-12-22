@@ -1,8 +1,10 @@
 import re
+import pickle
 from itertools import compress, product, filterfalse
 from collections import defaultdict as dd
 
-BORDER=1
+BORDER = 1
+TOTAL_DISTANCE = 10000
 
 class Point:
     def __init__(self, x, y):
@@ -28,7 +30,6 @@ min_x = min([c.x for c in coords]) - BORDER
 max_x = max([c.x for c in coords]) + BORDER
 min_y = min([c.y for c in coords]) - BORDER
 max_y = max([c.y for c in coords]) + BORDER
-print(min_x, min_y, max_x, max_y)
 
 def is_on_border(x, y):
     return any([x == min_x, x == max_x, y == min_y, y == max_y])
@@ -41,13 +42,20 @@ def compress_distances(d_list: list):
     return list(compress(d_list, mask))
 
 starmap = dd(list)
-
 infinite_regions = set()
 
-for xy in product(range(min_x, max_x+1), range(min_y, max_y+1)):
+map_iter = lambda: product(range(min_x, max_x+1), range(min_y, max_y+1))
+
+for xy in map_iter():
     for i, c in enumerate(coords):
         d = c.manhattan_distance(*xy)
         starmap[xy].append((i, d))
+
+# intermediate starmap storage on disk
+with open('06_starmap.pickle', 'wb') as pickle_file:
+    pickle.dump(starmap, pickle_file)
+
+for xy in map_iter():
     c_d_list = compress_distances(starmap[xy])
     if len(c_d_list) == 1:
         starmap[xy] = c_d_list
@@ -57,14 +65,20 @@ for xy in product(range(min_x, max_x+1), range(min_y, max_y+1)):
         starmap[xy] = []
     
 
-regions = dd(int)
+hostile_regions = dd(int)
 for xy, d_list in starmap.items():
     for i, d in filterfalse(lambda x: x[0] in infinite_regions, d_list):
-        regions[i] += 1
+        hostile_regions[i] += 1
 
-print(f"part 1: {max(regions.values())}")
+print(f"part 1: {max(hostile_regions.values())}")
 
-        
+# load pickled starmap from earlier
+with open('06_starmap.pickle', 'rb') as pickle_file:
+    starmap = pickle.load(pickle_file)
 
+friendly_region_size = 0
+for xy in map_iter():
+    if sum([d for i, d in starmap[xy]]) < TOTAL_DISTANCE:
+        friendly_region_size +=1 
 
-
+print(f"part 2: {friendly_region_size}")

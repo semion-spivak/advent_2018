@@ -18,12 +18,18 @@ class Unit:
     def find_paths_to_foes(self):
         global cave
         self.foes_paths = []
-        cave_without_allies = cave.restricted_view(self.allies.nodes())
+        cave_without_allies = cave.restricted_view(self.allies.nodes.keys())
         for foe in self.foes.nodes():
             try:
                 self.foes_paths.append(cave_without_allies.shortest_path(foe))
             except nx.NetworkXNoPath:
                 pass
+
+    def approach(self):
+        pass
+
+    def attack(self):
+        pass
 
 
 class Elf(Unit):

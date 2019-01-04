@@ -1,29 +1,23 @@
-from itertools import count, chain
+from itertools import count, chain, product
 import networkx as nx
-
-cave, elves, goblins = None, None, None
 
 
 class Unit:
-    foes = nx.Graph()
-    allies = nx.Graph()
-
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
+    def __init__(self, node, foes=None, allies=None, cave: nx.Graph = None):
+        self.node = node
         self.attack_power = 3
         self.hit_points = 200
         self.foes_paths = []
+        self.foes = foes
+        self.allies = allies
+        self.cave = cave
 
     def find_paths_to_foes(self):
-        global cave
+        nontraversal = set(chain(self.allies.nodes(), self.foes.nodes())) - {self.node}
         self.foes_paths = []
-        cave_without_allies = cave.restricted_view(self.allies.nodes.keys())
         for foe in self.foes.nodes():
-            try:
-                self.foes_paths.append(cave_without_allies.shortest_path(foe))
-            except nx.NetworkXNoPath:
-                pass
+            sub = nx.restricted_view(self.cave, nontraversal - {foe}, [])
+            self.foes_paths.append(nx.shortest_path(sub, source=self.node, target=foe))
 
     def approach(self):
         pass
@@ -31,21 +25,19 @@ class Unit:
     def attack(self):
         pass
 
+    def tick(self):
+        self.find_paths_to_foes()
+
 
 class Elf(Unit):
-    global elves, goblins
-    allies = elves
-    foes = goblins
+    pass
 
 
 class Goblin(Unit):
-    global elves, goblins
-    allies = goblins
-    foes = elves
+    pass
 
 
 def main():
-    global cave, elves, goblins
     x, y = 0, 0
     coords = {}
     cave = nx.Graph()
@@ -60,22 +52,24 @@ def main():
                     coords[(x, y)] = cell
                     continue
                 elif cell == 'G':
-                    goblins.add_node((x, y), obj=Goblin(x, y))
+                    goblins.add_node((x, y), obj=Goblin((x, y), foes=elves, allies=goblins, cave=cave))
                 elif cell == 'E':
-                    elves.add_node((x, y), obj=Elf(x, y))
+                    elves.add_node((x, y), obj=Elf((x, y), foes=goblins, allies=elves, cave=cave))
                 coords[(x, y)] = '.'
                 cave.add_node((x, y))
 
-    for i in range(x+1):
-        for j in range(y+1):
-            if coords.get((i, j)) == '#':
-                continue
-            cave.add_star(
-                chain([(i, j)],
-                      filter(lambda _o: coords.get(_o, '#') != '#', [(i, j-1), (i, j+1), (i-1, j), (i+1, j)])))
+    for i, j in product(range(x+1), range(y+1)):
+        if coords.get((i, j)) == '#':
+            continue
+        nx.add_star(cave, chain([(i, j)],
+                  filter(lambda _o: coords.get(_o, '#') != '#', [(i, j-1), (i, j+1), (i-1, j), (i+1, j)])))
+
+    for (x, y), unit in chain(elves.nodes(data=True), goblins.nodes(data=True)):
+        unit['obj'].tick()
 
     pass
 
 
 if __name__ == '__main__':
     main()
+
